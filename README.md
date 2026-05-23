@@ -16,7 +16,18 @@ Claude Desktop  ──stdio──►  server.js  ──WebSocket──►  Chrom
 
 ---
 
-## Installation
+## Quick Install (Windows)
+
+1. [Download or clone this repo](https://github.com/Bronzeace1/google-keep-claude-bridge)
+2. Double-click **`install.bat`**
+3. Load the extension in Chrome (`chrome://extensions/` → Developer mode → Load unpacked → select `extension/`)
+4. Double-click the **Start Keep Bridge** shortcut on your Desktop
+5. Open [keep.google.com](https://keep.google.com) in Chrome
+6. Ask Claude: **"What notes do I have in Keep?"**
+
+---
+
+## Manual Installation
 
 ### Step 1 — Install the Chrome Extension
 
@@ -49,7 +60,7 @@ Add this inside the `mcpServers` block (replace the path with your actual path):
   "mcpServers": {
     "google-keep-bridge": {
       "command": "node",
-      "args": ["C:/Users/jesse/ClaudeWorkSpace/google-keep-claude-bridge/mcp-server/server.js"]
+      "args": ["C:/path/to/google-keep-claude-bridge/mcp-server/server.js"]
     }
   }
 }
@@ -57,7 +68,7 @@ Add this inside the `mcpServers` block (replace the path with your actual path):
 
 ### Step 4 — Use it
 
-1. Start the server: `node mcp-server/server.js`
+1. Start the server: double-click **Start Keep Bridge** on your Desktop, or run `node mcp-server/server.js`
 2. Open [keep.google.com](https://keep.google.com) in Chrome
 3. Restart Claude Desktop
 4. Ask Claude: **"What notes do I have in Keep?"**
@@ -76,7 +87,7 @@ Add this inside the `mcpServers` block (replace the path with your actual path):
 ## Troubleshooting
 
 **"Chrome extension is not connected"**
-→ Make sure `keep.google.com` is open in a Chrome tab and the extension is enabled.
+→ Make sure `keep.google.com` is open in a Chrome tab and the extension is enabled. The extension reconnects automatically within 5 seconds of the bridge server starting.
 
 **No notes returned / empty results**
 → Google occasionally changes Keep's internal HTML structure. Open `extension/content.js` and update the CSS selectors to match the current DOM. Use Chrome DevTools (F12) on keep.google.com to inspect the note elements.
@@ -91,11 +102,30 @@ Add this inside the `mcpServers` block (replace the path with your actual path):
 ```
 google-keep-claude-bridge/
 ├── extension/
-│   ├── manifest.json   # Chrome extension config
-│   ├── content.js      # Runs on keep.google.com, scrapes notes
-│   └── popup.html      # Toolbar popup showing connection status
+│   ├── manifest.json      # Chrome extension config
+│   ├── background.js      # Service worker — holds WebSocket to bridge
+│   ├── content.js         # Runs on keep.google.com, scrapes notes
+│   ├── popup.html/js      # Toolbar popup showing connection status
+│   └── icons/             # Extension icons (16, 48, 128 px)
 ├── mcp-server/
-│   ├── server.js       # MCP + WebSocket bridge
+│   ├── server.js          # MCP + WebSocket bridge server
 │   └── package.json
+├── store-assets/          # Chrome Web Store submission files
+├── install.bat            # Windows quick-installer (double-click)
+├── install.ps1            # Installer script
+├── start-server.bat       # Launches the bridge server
 └── README.md
 ```
+
+---
+
+## Privacy Policy
+
+**Your data never leaves your computer.**
+
+- The extension reads note titles and content from the Google Keep tab you have open
+- Data is sent only to `localhost:8080` — never to any external server
+- Nothing is stored persistently; notes are read on demand and discarded
+- No account is created; no passwords are stored
+
+Full privacy policy: [store-assets/privacy-policy.html](store-assets/privacy-policy.html)

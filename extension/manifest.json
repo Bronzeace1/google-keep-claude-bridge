@@ -2,9 +2,10 @@
   "manifest_version": 3,
   "name": "Google Keep Sync for Claude",
   "version": "1.0.0",
-  "description": "Bridges your Google Keep notes to Claude Desktop via a local MCP server.",
+  "description": "Read your Google Keep notes inside Claude Desktop. No API keys, no logins — works instantly via your open Chrome tab.",
   "permissions": [
-    "tabs"
+    "tabs",
+    "alarms"
   ],
   "host_permissions": [
     "https://keep.google.com/*"
@@ -21,6 +22,16 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Google Keep → Claude"
+    "default_title": "Google Keep → Claude",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16":  "icons/icon16.png",
+    "48":  "icons/icon48.png",
+    "128": "icons/icon128.png"
   }
 }

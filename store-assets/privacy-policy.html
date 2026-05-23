@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Privacy Policy — Google Keep Sync for Claude</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+           max-width: 720px; margin: 40px auto; padding: 0 20px;
+           color: #202124; line-height: 1.7; }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    h2 { font-size: 16px; margin-top: 32px; color: #1a73e8; }
+    .meta { color: #5f6368; font-size: 13px; margin-bottom: 32px; }
+    ul  { padding-left: 20px; }
+    li  { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <h1>Privacy Policy</h1>
+  <p class="meta">Google Keep Sync for Claude &nbsp;·&nbsp; Last updated: May 2026</p>
+
+  <h2>What this extension does</h2>
+  <p>
+    This Chrome extension reads the Google Keep notes that are currently visible
+    in your open Chrome tab and forwards them to a local bridge server running
+    on your own computer (<code>localhost:8080</code>). The bridge server then
+    makes those notes available to Claude Desktop via a local MCP connection.
+  </p>
+
+  <h2>Data collected</h2>
+  <ul>
+    <li>The extension reads <strong>note titles and content</strong> from the
+        Google Keep page you have open.</li>
+    <li>This data is sent only to <strong>localhost</strong> — it never leaves
+        your computer.</li>
+    <li>No data is transmitted to any external server, cloud service, or
+        third party.</li>
+  </ul>
+
+  <h2>Data storage</h2>
+  <ul>
+    <li>The extension does <strong>not</strong> store any note data persistently.
+        Notes are read on demand and discarded after each request.</li>
+    <li>No cookies, local storage, or extension storage APIs are used to
+        save note content.</li>
+  </ul>
+
+  <h2>Permissions used and why</h2>
+  <ul>
+    <li><strong>tabs</strong> — needed to locate the open Google Keep tab so
+        the extension can ask it to read notes.</li>
+    <li><strong>alarms</strong> — keeps the Chrome service worker alive so the
+        WebSocket connection to the local bridge stays open.</li>
+    <li><strong>host_permissions: keep.google.com</strong> — allows the content
+        script to run on Google Keep pages to read the visible notes.</li>
+  </ul>
+
+  <h2>Third-party services</h2>
+  <p>This extension does not communicate with any third-party service.
+     All communication is between your Chrome browser and your local machine.</p>
+
+  <h2>Children's privacy</h2>
+  <p>This extension is not directed at children and does not knowingly collect
+     any information from anyone under the age of 13.</p>
+
+  <h2>Changes to this policy</h2>
+  <p>If this policy changes, the updated version will be posted at the
+     extension's GitHub repository.</p>
+
+  <h2>Contact</h2>
+  <p>Questions? Email <a href="mailto:jesse.temares@gmail.com">jesse.temares@gmail.com</a>
+     or open an issue at
+     <a href="https://github.com/Bronzeace1/google-keep-claude-bridge">
+       github.com/Bronzeace1/google-keep-claude-bridge</a>.</p>
+</body>
+</html>
