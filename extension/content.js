@@ -22,10 +22,6 @@ let cachedNotes = [];
 function scrapeKeepNotes() {
   const notes = [];
 
-  // Primary strategy: verified selectors from live DOM inspection
-  // Note cards: .IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc
-  // Title:      .IZ65Hb-r4nke-haAclf
-  // Content:    .IZ65Hb-qJTHM-haAclf
   const noteCards = document.querySelectorAll(
     '.IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc'
   );
@@ -46,8 +42,7 @@ function scrapeKeepNotes() {
     });
   }
 
-  // Fallback: if Google updates their class names, grab text from
-  // role=button elements that look like note cards
+  // Fallback: role=button elements that look like note cards
   if (notes.length === 0) {
     document.querySelectorAll('[role="button"]').forEach(el => {
       const text = el.innerText?.trim();
@@ -68,64 +63,131 @@ function scrapeKeepNotes() {
 
 // ---------------------------------------------------------------------------
 // MutationObserver — watches Keep's DOM for new note cards.
-// When the user scrolls down and Keep lazy-loads more cards, this fires,
-// re-scrapes, and updates cachedNotes so Claude always has the full list.
+// When the user scrolls down and Keep lazy-loads more cards, the cache
+// updates automatically so Claude always has the full list.
 // ---------------------------------------------------------------------------
 let debounceTimer = null;
 
 const observer = new MutationObserver(() => {
-  // Debounce: wait 300 ms after the last DOM change before re-scraping
   clearTimeout(debounceTimer);
   debounceTimer = setTimeout(() => {
     const fresh = scrapeKeepNotes();
-    // Only update if we found at least as many notes as before (never shrink)
     if (fresh.length >= cachedNotes.length) {
       cachedNotes = fresh;
     }
   }, 300);
 });
 
-// Observe the whole document for added/removed nodes anywhere in the tree
 observer.observe(document.body, { childList: true, subtree: true });
 
 // ---------------------------------------------------------------------------
-// Proactive scroll — fires 3 s after page load so all notes are rendered
-// before the user or Claude asks for them.
+// Proactive scroll — fires 3 s after page load so all notes are pre-loaded
 // ---------------------------------------------------------------------------
 async function scrollToLoadAllNotes() {
   const delay    = ms => new Promise(r => setTimeout(r, ms));
   const getCards = ()  => document.querySelectorAll('.IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc');
 
-  window.focus(); // prevent Chrome background-throttle
+  window.focus();
 
   let previousCount = 0;
-  const maxPasses   = 10; // 10 × 400 ms = 4 s max
-
-  for (let i = 0; i < maxPasses; i++) {
+  for (let i = 0; i < 10; i++) {
     const cards = getCards();
     if (cards.length === previousCount && i > 0) break;
     previousCount = cards.length;
-
-    // scrollIntoView fires Keep's IntersectionObserver → loads next batch
     if (cards.length > 0) {
       cards[cards.length - 1].scrollIntoView({ behavior: 'instant', block: 'end' });
     }
-
     await delay(400);
   }
 
-  // Scroll back to top so the page looks normal
   const first = getCards()[0];
   if (first) first.scrollIntoView({ behavior: 'instant', block: 'start' });
 
-  // Capture everything now in the DOM into the cache
   cachedNotes = scrapeKeepNotes();
 }
 
 (async () => {
-  await new Promise(r => setTimeout(r, 3000)); // wait for Keep's initial render
+  await new Promise(r => setTimeout(r, 3000));
   await scrollToLoadAllNotes();
 })();
+
+// ---------------------------------------------------------------------------
+// Native Keep search — types the query into Keep's own search bar,
+// waits for results to render, scrapes them, then clears the search.
+// Falls back to in-memory filter if the search bar can't be found.
+// ---------------------------------------------------------------------------
+async function nativeSearch(query) {
+  const delay = ms => new Promise(r => setTimeout(r, ms));
+
+  // Keep's search input (try several selectors for robustness)
+  const inputSelectors = [
+    'input[aria-label="Search"]',
+    '[role="searchbox"]',
+    'input[placeholder="Search"]',
+    'input[jsname][type="text"]',
+  ];
+
+  let input = inputSelectors.map(s => document.querySelector(s)).find(Boolean);
+
+  // If the input isn't in the DOM yet, click the search icon to reveal it
+  if (!input) {
+    const triggerSelectors = [
+      '[aria-label="Search"]',
+      '[data-tooltip="Search"]',
+      'button[jsaction*="search"]',
+    ];
+    const trigger = triggerSelectors
+      .map(s => document.querySelector(s))
+      .find(el => el && el.tagName !== 'INPUT');
+
+    if (trigger) {
+      trigger.click();
+      await delay(600);
+      input = inputSelectors.map(s => document.querySelector(s)).find(Boolean);
+    }
+  }
+
+  // No search bar found — fall back to filtering the cache
+  if (!input) {
+    const q = query.toLowerCase();
+    return cachedNotes.filter(n =>
+      n.title.toLowerCase().includes(q) ||
+      n.content.toLowerCase().includes(q)
+    );
+  }
+
+  // Type query into Keep's search box
+  input.focus();
+  input.value = '';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  await delay(100);
+
+  // Use execCommand so React/Angular virtual DOM handlers fire properly
+  input.focus();
+  document.execCommand('selectAll', false, null);
+  document.execCommand('insertText', false, query);
+
+  // Also fire input event in case execCommand alone isn't enough
+  input.dispatchEvent(new InputEvent('input', { bubbles: true, data: query }));
+
+  // Wait for Keep to render search results
+  await delay(1800);
+
+  // Scrape what Keep shows for this search
+  const results = scrapeKeepNotes();
+
+  // Clear the search and restore the normal notes view
+  input.focus();
+  document.execCommand('selectAll', false, null);
+  document.execCommand('insertText', false, '');
+  input.value = '';
+  input.dispatchEvent(new InputEvent('input', { bubbles: true }));
+  input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, keyCode: 27 }));
+
+  await delay(400);
+
+  return results;
+}
 
 // ---------------------------------------------------------------------------
 // Keep the MV3 service worker alive (content scripts persist; workers don't)
@@ -141,9 +203,16 @@ setInterval(() => {
 // ---------------------------------------------------------------------------
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'get_notes') {
-    // Return the live cache — updated automatically as the user scrolls.
-    // Falls back to a fresh scrape if cache is still empty (very early call).
+    // Return the live cache — kept current by MutationObserver as user scrolls
     sendResponse({ notes: cachedNotes.length ? cachedNotes : scrapeKeepNotes() });
+  }
+
+  if (message.action === 'search_notes') {
+    // Use Keep's native search bar for accurate, full-library results
+    nativeSearch(message.query).then(results => {
+      sendResponse({ notes: results });
+    });
+    return true; // keep channel open for async response
   }
 
   if (message.action === 'ping') {

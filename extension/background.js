@@ -58,7 +58,7 @@ function connect() {
     try { request = JSON.parse(event.data); }
     catch { return; }
 
-    if (request.action === 'get_notes') {
+    if (request.action === 'get_notes' || request.action === 'search_notes') {
       // Find the Google Keep tab
       const tabs = await chrome.tabs.query({ url: 'https://keep.google.com/*' });
 
@@ -81,9 +81,14 @@ function connect() {
         await chrome.windows.update(tab.windowId, { focused: true });
       } catch (_) { /* non-fatal — best effort */ }
 
-      // Ask the content script in that tab to scrape notes
+      // Build the message to send to the content script
+      const contentMsg = request.action === 'search_notes'
+        ? { action: 'search_notes', query: request.query }
+        : { action: 'get_notes' };
+
+      // Ask the content script in that tab to scrape / search notes
       try {
-        const response = await chrome.tabs.sendMessage(tab.id, { action: 'get_notes' });
+        const response = await chrome.tabs.sendMessage(tab.id, contentMsg);
         socket.send(JSON.stringify({ action: 'send_notes', data: response.notes || [] }));
       } catch (err) {
         socket.send(JSON.stringify({

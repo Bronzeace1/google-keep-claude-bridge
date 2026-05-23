@@ -53,9 +53,9 @@ function startWebSocket() {
 startWebSocket();
 
 // ---------------------------------------------------------------------------
-// Helper: ask the extension for notes, wait for the reply (15 s timeout)
+// Helper: send a request to the extension and wait for the reply (15 s timeout)
 // ---------------------------------------------------------------------------
-function requestNotes() {
+function extensionRequest(payload, timeoutMs = 15000) {
   return new Promise((resolve, reject) => {
     if (!extensionSocket || extensionSocket.readyState !== 1 /* OPEN */) {
       return reject(new Error(
@@ -67,7 +67,7 @@ function requestNotes() {
     const timeout = setTimeout(() => {
       extensionSocket.off("message", handler);
       reject(new Error("Timed out waiting for notes from the extension (15 s)."));
-    }, 15000);
+    }, timeoutMs);
 
     function handler(data) {
       let msg;
@@ -81,9 +81,13 @@ function requestNotes() {
     }
 
     extensionSocket.on("message", handler);
-    extensionSocket.send(JSON.stringify({ action: "get_notes" }));
+    extensionSocket.send(JSON.stringify(payload));
   });
 }
+
+// Convenience wrappers
+const requestNotes        = ()      => extensionRequest({ action: "get_notes" });
+const requestSearch       = (query) => extensionRequest({ action: "search_notes", query }, 20000);
 
 // ---------------------------------------------------------------------------
 // MCP server — Claude Desktop connects here via stdio
@@ -136,16 +140,12 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 
   if (name === "search_keep_notes") {
-    const query = (args?.query || "").toLowerCase();
+    const query = args?.query || "";
     try {
-      const notes = await requestNotes();
-      const matches = notes.filter(
-        (n) =>
-          n.title.toLowerCase().includes(query) ||
-          n.content.toLowerCase().includes(query)
-      );
+      // Delegates to Keep's native search bar via content.js nativeSearch()
+      const matches = await requestSearch(query);
       if (!matches.length) {
-        return { content: [{ type: "text", text: `No notes matched "${args.query}".` }] };
+        return { content: [{ type: "text", text: `No notes matched "${query}".` }] };
       }
       return { content: [{ type: "text", text: JSON.stringify(matches, null, 2) }] };
     } catch (err) {
