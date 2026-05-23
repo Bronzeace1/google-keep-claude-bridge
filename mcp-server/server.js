@@ -6,7 +6,7 @@
  * reads Keep directly from the browser where you're already logged in.
  */
 
-import { Server }              from "@modelcontextprotocol/sdk/server/index.js";
+import { Server }               from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
@@ -15,23 +15,45 @@ import {
 import { WebSocketServer } from "ws";
 
 // ---------------------------------------------------------------------------
-// WebSocket server — the Chrome extension connects here
+// WebSocket server — the Chrome extension connects here.
+// Retries every 2 s if port 8080 is already in use (e.g. stale process from
+// a previous run) rather than crashing, so Claude Desktop keeps us alive.
 // ---------------------------------------------------------------------------
-const wss = new WebSocketServer({ port: 8080 });
 let extensionSocket = null;
 
-wss.on("connection", (ws) => {
-  extensionSocket = ws;
-  console.error("[bridge] Chrome extension connected.");
+function startWebSocket() {
+  const wss = new WebSocketServer({ port: 8080 });
 
-  ws.on("close",   () => { extensionSocket = null; console.error("[bridge] Extension disconnected."); });
-  ws.on("error",   (err) => console.error("[bridge] Extension socket error:", err.message));
-});
+  wss.on("error", (err) => {
+    if (err.code === "EADDRINUSE") {
+      console.error("[bridge] Port 8080 busy — retrying in 2 s…");
+      wss.close();
+      setTimeout(startWebSocket, 2000);
+    } else {
+      console.error("[bridge] WebSocket error:", err.message);
+    }
+  });
 
-console.error("[bridge] WebSocket server listening on ws://localhost:8080");
+  wss.on("listening", () => {
+    console.error("[bridge] WebSocket server listening on ws://localhost:8080");
+  });
+
+  wss.on("connection", (ws) => {
+    extensionSocket = ws;
+    console.error("[bridge] Chrome extension connected.");
+
+    ws.on("close", () => {
+      extensionSocket = null;
+      console.error("[bridge] Extension disconnected.");
+    });
+    ws.on("error", (err) => console.error("[bridge] Extension socket error:", err.message));
+  });
+}
+
+startWebSocket();
 
 // ---------------------------------------------------------------------------
-// Helper: ask the extension for notes, wait for the reply (5 s timeout)
+// Helper: ask the extension for notes, wait for the reply (15 s timeout)
 // ---------------------------------------------------------------------------
 function requestNotes() {
   return new Promise((resolve, reject) => {
