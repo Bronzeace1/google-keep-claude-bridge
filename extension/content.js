@@ -9,48 +9,16 @@
  * If Keep updates their UI, use inspect-dom.js to find new selectors.
  */
 
-/**
- * Scroll through all Keep notes so lazy-loaded cards are rendered before
- * we scrape.
- *
- * Keep uses IntersectionObserver to load cards — raw scrollTop changes on
- * the container are often ignored.  Using scrollIntoView() on the LAST
- * rendered card is the only reliable way to trigger the observer and pull
- * in the next batch.  We also focus the window so Chrome doesn't throttle
- * the tab as a background page.
- */
-async function scrollToLoadAllNotes() {
-  const delay = ms => new Promise(r => setTimeout(r, ms));
-  const getCards = () =>
-    document.querySelectorAll('.IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc');
+// ---------------------------------------------------------------------------
+// Live note cache — always reflects what's currently in the DOM.
+// Updated by the MutationObserver whenever the user scrolls and Keep renders
+// new cards, and by the proactive scroll on page load.
+// ---------------------------------------------------------------------------
+let cachedNotes = [];
 
-  // Wake the page out of background-throttle mode
-  window.focus();
-
-  let previousCount = 0;
-  const maxPasses = 10; // 10 × 400 ms = 4 s max — safely within the 5 s server timeout
-
-  for (let i = 0; i < maxPasses; i++) {
-    const cards = getCards();
-
-    // Stop if no new cards appeared since last scroll
-    if (cards.length === previousCount && i > 0) break;
-    previousCount = cards.length;
-
-    // Scroll the last rendered card into view — this fires Keep's
-    // IntersectionObserver and triggers the next batch to load
-    if (cards.length > 0) {
-      cards[cards.length - 1].scrollIntoView({ behavior: 'instant', block: 'end' });
-    }
-
-    await delay(400);
-  }
-
-  // Scroll the first card back into view so the page looks normal
-  const first = getCards()[0];
-  if (first) first.scrollIntoView({ behavior: 'instant', block: 'start' });
-}
-
+// ---------------------------------------------------------------------------
+// Scrape all note cards currently in the DOM
+// ---------------------------------------------------------------------------
 function scrapeKeepNotes() {
   const notes = [];
 
@@ -68,10 +36,9 @@ function scrapeKeepNotes() {
       const contentEl = card.querySelector('.IZ65Hb-qJTHM-haAclf');
 
       const title   = titleEl?.innerText?.trim()   || '';
-      // Clean up extra blank lines from list-style notes
       const content = contentEl?.innerText?.trim()
         .replace(/\n{3,}/g, '\n')
-        .replace(/\n\n/g, '\n') || '';
+        .replace(/\n\n/g,   '\n') || '';
 
       if (title || content) {
         notes.push({ title: title || '(no title)', content });
@@ -79,8 +46,8 @@ function scrapeKeepNotes() {
     });
   }
 
-  // Fallback: if Google updates their class names, grab all text from
-  // role=button elements that look like note cards (contain meaningful text)
+  // Fallback: if Google updates their class names, grab text from
+  // role=button elements that look like note cards
   if (notes.length === 0) {
     document.querySelectorAll('[role="button"]').forEach(el => {
       const text = el.innerText?.trim();
@@ -88,7 +55,7 @@ function scrapeKeepNotes() {
         const lines = text.split('\n').filter(l => l.trim());
         if (lines.length > 0) {
           notes.push({
-            title: lines[0] || '(no title)',
+            title:   lines[0] || '(no title)',
             content: lines.slice(1).join('\n').trim()
           });
         }
@@ -100,48 +67,88 @@ function scrapeKeepNotes() {
 }
 
 // ---------------------------------------------------------------------------
-// Proactive scroll — runs once on page load, in the background.
-// By the time Claude asks for notes, they're already in the DOM.
+// MutationObserver — watches Keep's DOM for new note cards.
+// When the user scrolls down and Keep lazy-loads more cards, this fires,
+// re-scrapes, and updates cachedNotes so Claude always has the full list.
 // ---------------------------------------------------------------------------
+let debounceTimer = null;
+
+const observer = new MutationObserver(() => {
+  // Debounce: wait 300 ms after the last DOM change before re-scraping
+  clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    const fresh = scrapeKeepNotes();
+    // Only update if we found at least as many notes as before (never shrink)
+    if (fresh.length >= cachedNotes.length) {
+      cachedNotes = fresh;
+    }
+  }, 300);
+});
+
+// Observe the whole document for added/removed nodes anywhere in the tree
+observer.observe(document.body, { childList: true, subtree: true });
+
+// ---------------------------------------------------------------------------
+// Proactive scroll — fires 3 s after page load so all notes are rendered
+// before the user or Claude asks for them.
+// ---------------------------------------------------------------------------
+async function scrollToLoadAllNotes() {
+  const delay    = ms => new Promise(r => setTimeout(r, ms));
+  const getCards = ()  => document.querySelectorAll('.IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc');
+
+  window.focus(); // prevent Chrome background-throttle
+
+  let previousCount = 0;
+  const maxPasses   = 10; // 10 × 400 ms = 4 s max
+
+  for (let i = 0; i < maxPasses; i++) {
+    const cards = getCards();
+    if (cards.length === previousCount && i > 0) break;
+    previousCount = cards.length;
+
+    // scrollIntoView fires Keep's IntersectionObserver → loads next batch
+    if (cards.length > 0) {
+      cards[cards.length - 1].scrollIntoView({ behavior: 'instant', block: 'end' });
+    }
+
+    await delay(400);
+  }
+
+  // Scroll back to top so the page looks normal
+  const first = getCards()[0];
+  if (first) first.scrollIntoView({ behavior: 'instant', block: 'start' });
+
+  // Capture everything now in the DOM into the cache
+  cachedNotes = scrapeKeepNotes();
+}
+
 (async () => {
-  // Wait for Keep's initial render to settle before we start scrolling
-  await new Promise(r => setTimeout(r, 3000));
+  await new Promise(r => setTimeout(r, 3000)); // wait for Keep's initial render
   await scrollToLoadAllNotes();
 })();
 
 // ---------------------------------------------------------------------------
-// Wake up the background service worker as soon as Keep loads.
-// In Chrome MV3, service workers sleep when idle — sending any message
-// forces Chrome to start the worker so it can connect to the bridge server.
+// Keep the MV3 service worker alive (content scripts persist; workers don't)
 // ---------------------------------------------------------------------------
-chrome.runtime.sendMessage({ action: 'ping' }).catch(() => {
-  // Ignore — background may not be ready on very first load
-});
+chrome.runtime.sendMessage({ action: 'ping' }).catch(() => {});
 
-// Keep the service worker alive indefinitely.
-// Content scripts have a persistent context (they live as long as the page is
-// open), but MV3 service workers are terminated after ~30 s of silence.
-// Pinging every 20 s ensures the worker never idles out while Keep is open.
 setInterval(() => {
   chrome.runtime.sendMessage({ action: 'ping' }).catch(() => {});
 }, 20000);
 
 // ---------------------------------------------------------------------------
-// Listen for requests from background.js
+// Message handler
 // ---------------------------------------------------------------------------
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'get_notes') {
-    // Scroll is already done proactively — just scrape what's in the DOM.
-    // If the user has scrolled further since load, a quick re-scroll picks
-    // up any new notes that loaded since the initial pass.
-    scrollToLoadAllNotes().then(() => {
-      const notes = scrapeKeepNotes();
-      sendResponse({ notes });
-    });
-    return true; // keep message channel open for async response
+    // Return the live cache — updated automatically as the user scrolls.
+    // Falls back to a fresh scrape if cache is still empty (very early call).
+    sendResponse({ notes: cachedNotes.length ? cachedNotes : scrapeKeepNotes() });
   }
+
   if (message.action === 'ping') {
     sendResponse({ alive: true });
   }
+
   return true;
 });
