@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Google Keep Sync for Claude</title>
+
+  <!-- Google Analytics -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-3R39CHLXGP"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){ dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-3R39CHLXGP');
+  </script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8f9fa;
+      color: #202124;
+      line-height: 1.6;
+    }
+
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e8eaed;
+      padding: 20px 40px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    header img {
+      width: 40px;
+      height: 40px;
+    }
+
+    header h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #202124;
+    }
+
+    .hero {
+      text-align: center;
+      padding: 80px 20px 60px;
+      background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+      color: #fff;
+    }
+
+    .hero h2 {
+      font-size: 40px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      line-height: 1.2;
+    }
+
+    .hero p {
+      font-size: 18px;
+      opacity: 0.9;
+      max-width: 560px;
+      margin: 0 auto 36px;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 14px 32px;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    .btn:hover { opacity: 0.88; }
+
+    .btn-primary {
+      background: #fff;
+      color: #1a73e8;
+      margin-right: 12px;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.7);
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      max-width: 1000px;
+      margin: 60px auto;
+      padding: 0 24px;
+    }
+
+    .feature {
+      background: #fff;
+      border-radius: 12px;
+      padding: 28px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .feature .icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .feature h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+
+    .feature p {
+      font-size: 14px;
+      color: #5f6368;
+    }
+
+    .how-it-works {
+      background: #fff;
+      padding: 60px 24px;
+      text-align: center;
+    }
+
+    .how-it-works h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 40px;
+    }
+
+    .steps {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .step {
+      flex: 1;
+      min-width: 180px;
+      max-width: 200px;
+    }
+
+    .step-num {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #1a73e8;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 12px;
+    }
+
+    .step p {
+      font-size: 14px;
+      color: #3c4043;
+    }
+
+    .examples {
+      max-width: 700px;
+      margin: 60px auto;
+      padding: 0 24px;
+      text-align: center;
+    }
+
+    .examples h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 24px;
+    }
+
+    .example-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .example-list li {
+      background: #fff;
+      border-left: 4px solid #1a73e8;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      text-align: left;
+      font-size: 15px;
+      color: #3c4043;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .example-list li::before {
+      content: '"';
+      color: #1a73e8;
+      font-weight: 700;
+    }
+
+    .example-list li::after {
+      content: '"';
+      color: #1a73e8;
+      font-weight: 700;
+    }
+
+    .privacy-bar {
+      background: #e8f5e9;
+      border: 1px solid #a5d6a7;
+      border-radius: 10px;
+      max-width: 700px;
+      margin: 0 auto 60px;
+      padding: 20px 28px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .privacy-bar .shield { font-size: 28px; }
+
+    .privacy-bar p {
+      font-size: 14px;
+      color: #2e7d32;
+      margin: 0;
+    }
+
+    .privacy-bar strong { display: block; font-size: 15px; margin-bottom: 4px; }
+
+    footer {
+      background: #fff;
+      border-top: 1px solid #e8eaed;
+      text-align: center;
+      padding: 28px 20px;
+      font-size: 13px;
+      color: #5f6368;
+    }
+
+    footer a { color: #1a73e8; text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <img src="https://raw.githubusercontent.com/Bronzeace1/google-keep-claude-bridge/master/extension/icons/icon48.png" alt="Icon" />
+    <h1>Google Keep Sync for Claude</h1>
+  </header>
+
+  <section class="hero">
+    <h2>Your Keep notes,<br>inside Claude Desktop.</h2>
+    <p>Ask Claude anything about your notes — no API keys, no logins, nothing leaves your computer.</p>
+    <a href="https://chrome.google.com/webstore" class="btn btn-primary">Add to Chrome — Free</a>
+    <a href="https://github.com/Bronzeace1/google-keep-claude-bridge" class="btn btn-secondary">View on GitHub</a>
+  </section>
+
+  <section class="features">
+    <div class="feature">
+      <div class="icon">🔒</div>
+      <h3>100% Private</h3>
+      <p>Notes are read from your open Chrome tab and sent only to a local server on your own machine. Nothing goes to any external server.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">⚡</div>
+      <h3>Instant Setup</h3>
+      <p>No API keys, no OAuth, no passwords. Install the extension, run the bridge server, and you're ready in under 2 minutes.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔍</div>
+      <h3>Native Search</h3>
+      <p>Uses Keep's own search bar to find notes across your entire library — not just what's visible on screen.</p>
+    </div>
+    <div class="feature">
+      <div class="icon">🔄</div>
+      <h3>Always Up to Date</h3>
+      <p>A live cache updates automatically as you scroll through your notes, so Claude always sees the latest version.</p>
+    </div>
+  </section>
+
+  <section class="how-it-works">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <p>Install the Chrome extension</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <p>Run the bridge server (one double-click)</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <p>Open keep.google.com in Chrome</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <p>Ask Claude anything about your notes</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="examples">
+    <h2>Example questions to ask Claude</h2>
+    <ul class="example-list">
+      <li>What restaurants do I have saved in Keep?</li>
+      <li>Summarise my project notes</li>
+      <li>Do I have anything about my fence project?</li>
+      <li>What's on my CCTV business plan?</li>
+      <li>Show me all my shopping lists</li>
+    </ul>
+  </section>
+
+  <div class="privacy-bar" style="padding: 20px 24px; margin: 0 auto 60px; max-width: 700px;">
+    <span class="shield">🛡️</span>
+    <p>
+      <strong>Your data never leaves your computer</strong>
+      The extension reads notes from your browser tab and sends them only to localhost:8080 — a server running on your own machine. No account required. No data stored. <a href="privacy-policy.html">Read the full privacy policy →</a>
+    </p>
+  </div>
+
+  <footer>
+    <p>
+      <a href="https://github.com/Bronzeace1/google-keep-claude-bridge">GitHub</a> &nbsp;·&nbsp;
+      <a href="privacy-policy.html">Privacy Policy</a> &nbsp;·&nbsp;
+      <a href="mailto:jesse.temares@gmail.com">Contact</a>
+    </p>
+    <p style="margin-top: 8px;">Open source · Free forever</p>
+  </footer>
+
+</body>
+</html>
