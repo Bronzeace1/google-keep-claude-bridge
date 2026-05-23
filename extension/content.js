@@ -5,59 +5,53 @@
  * Responds to messages from background.js — no direct WebSocket here,
  * so Google Keep's Content Security Policy cannot block it.
  *
- * NOTE: Google Keep uses obfuscated/changing CSS class names.
- * This script uses structural and ARIA selectors instead, which are
- * far more stable. If notes stop being detected, open DevTools on
- * keep.google.com, inspect a note card, and update the selectors below.
+ * Selectors verified against live Keep DOM on 2026-05-22.
+ * If Keep updates their UI, use inspect-dom.js to find new selectors.
  */
 
 function scrapeKeepNotes() {
   const notes = [];
 
-  // Strategy 1: note cards with data-note-id or data-id attributes
+  // Primary strategy: verified selectors from live DOM inspection
+  // Note cards: .IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc
+  // Title:      .IZ65Hb-r4nke-haAclf
+  // Content:    .IZ65Hb-qJTHM-haAclf
   const noteCards = document.querySelectorAll(
-    '[data-note-id], [data-id][jscontroller]'
+    '.IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc'
   );
 
   if (noteCards.length > 0) {
     noteCards.forEach(card => {
-      const id        = card.getAttribute('data-note-id') || card.getAttribute('data-id') || '';
-      const titleEl   = card.querySelector('[aria-label="Title"], [id^="title_"], [data-field="title"]');
-      const contentEl = card.querySelector('[aria-label="Content"], [id^="content_"], [contenteditable="true"]');
+      const titleEl   = card.querySelector('.IZ65Hb-r4nke-haAclf');
+      const contentEl = card.querySelector('.IZ65Hb-qJTHM-haAclf');
 
-      const title   = titleEl   ? titleEl.innerText.trim()   : '';
-      const content = contentEl ? contentEl.innerText.trim() : '';
+      const title   = titleEl?.innerText?.trim()   || '';
+      // Clean up extra blank lines from list-style notes
+      const content = contentEl?.innerText?.trim()
+        .replace(/\n{3,}/g, '\n')
+        .replace(/\n\n/g, '\n') || '';
 
       if (title || content) {
-        notes.push({ id, title: title || '(no title)', content });
+        notes.push({ title: title || '(no title)', content });
       }
     });
   }
 
-  // Strategy 2: semantic role-based selectors (Keep renders a grid/list of cards)
+  // Fallback: if Google updates their class names, grab all text from
+  // role=button elements that look like note cards (contain meaningful text)
   if (notes.length === 0) {
-    const items = document.querySelectorAll('[role="listitem"], [role="gridcell"]');
-    items.forEach(item => {
-      const headingEl  = item.querySelector('[role="heading"], h2, h3');
-      const paragraphs = item.querySelectorAll('p, [role="paragraph"]');
-      const title   = headingEl ? headingEl.innerText.trim() : '';
-      const content = Array.from(paragraphs).map(p => p.innerText.trim()).join('\n');
-      if (title || content) {
-        notes.push({ id: '', title: title || '(no title)', content });
+    document.querySelectorAll('[role="button"]').forEach(el => {
+      const text = el.innerText?.trim();
+      if (text && text.length > 10 && text.length < 2000) {
+        const lines = text.split('\n').filter(l => l.trim());
+        if (lines.length > 0) {
+          notes.push({
+            title: lines[0] || '(no title)',
+            content: lines.slice(1).join('\n').trim()
+          });
+        }
       }
     });
-  }
-
-  // Strategy 3: last resort — dump all text from the main content area
-  if (notes.length === 0) {
-    const main = document.querySelector('main, [role="main"]');
-    if (main) {
-      notes.push({
-        id: '',
-        title: '(raw page text — selectors may need updating)',
-        content: main.innerText.trim().slice(0, 4000)
-      });
-    }
   }
 
   return notes;
@@ -69,5 +63,5 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const notes = scrapeKeepNotes();
     sendResponse({ notes });
   }
-  return true; // required to use sendResponse asynchronously
+  return true; // required to keep channel open for async response
 });
