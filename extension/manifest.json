@@ -5,7 +5,8 @@
   "description": "Read your Google Keep notes inside Claude Desktop. No API keys, no logins — works instantly via your open Chrome tab.",
   "permissions": [
     "tabs",
-    "alarms"
+    "alarms",
+    "windows"
   ],
   "host_permissions": [
     "https://keep.google.com/*"

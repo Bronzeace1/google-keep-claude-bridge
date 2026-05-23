@@ -71,9 +71,19 @@ function connect() {
         return;
       }
 
+      const tab = tabs[0];
+
+      // Bring the Keep tab into focus so Chrome stops throttling it as a
+      // background page — this lets Keep's IntersectionObserver fire and
+      // render all lazy-loaded note cards before we scrape.
+      try {
+        await chrome.tabs.update(tab.id, { active: true });
+        await chrome.windows.update(tab.windowId, { focused: true });
+      } catch (_) { /* non-fatal — best effort */ }
+
       // Ask the content script in that tab to scrape notes
       try {
-        const response = await chrome.tabs.sendMessage(tabs[0].id, { action: 'get_notes' });
+        const response = await chrome.tabs.sendMessage(tab.id, { action: 'get_notes' });
         socket.send(JSON.stringify({ action: 'send_notes', data: response.notes || [] }));
       } catch (err) {
         socket.send(JSON.stringify({

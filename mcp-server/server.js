@@ -44,8 +44,8 @@ function requestNotes() {
 
     const timeout = setTimeout(() => {
       extensionSocket.off("message", handler);
-      reject(new Error("Timed out waiting for notes from the extension (5 s)."));
-    }, 5000);
+      reject(new Error("Timed out waiting for notes from the extension (15 s)."));
+    }, 15000);
 
     function handler(data) {
       let msg;
