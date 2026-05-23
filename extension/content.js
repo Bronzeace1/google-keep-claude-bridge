@@ -28,7 +28,7 @@ async function scrollToLoadAllNotes() {
   window.focus();
 
   let previousCount = 0;
-  const maxPasses = 20; // safety cap — 20 × 700 ms ≈ 14 s worst case
+  const maxPasses = 10; // 10 × 400 ms = 4 s max — safely within the 5 s server timeout
 
   for (let i = 0; i < maxPasses; i++) {
     const cards = getCards();
@@ -43,7 +43,7 @@ async function scrollToLoadAllNotes() {
       cards[cards.length - 1].scrollIntoView({ behavior: 'instant', block: 'end' });
     }
 
-    await delay(700);
+    await delay(400);
   }
 
   // Scroll the first card back into view so the page looks normal
@@ -99,17 +99,41 @@ function scrapeKeepNotes() {
   return notes;
 }
 
+// ---------------------------------------------------------------------------
+// Proactive scroll — runs once on page load, in the background.
+// By the time Claude asks for notes, they're already in the DOM.
+// ---------------------------------------------------------------------------
+(async () => {
+  // Wait for Keep's initial render to settle before we start scrolling
+  await new Promise(r => setTimeout(r, 3000));
+  await scrollToLoadAllNotes();
+})();
+
+// ---------------------------------------------------------------------------
 // Wake up the background service worker as soon as Keep loads.
 // In Chrome MV3, service workers sleep when idle — sending any message
 // forces Chrome to start the worker so it can connect to the bridge server.
+// ---------------------------------------------------------------------------
 chrome.runtime.sendMessage({ action: 'ping' }).catch(() => {
   // Ignore — background may not be ready on very first load
 });
 
+// Keep the service worker alive indefinitely.
+// Content scripts have a persistent context (they live as long as the page is
+// open), but MV3 service workers are terminated after ~30 s of silence.
+// Pinging every 20 s ensures the worker never idles out while Keep is open.
+setInterval(() => {
+  chrome.runtime.sendMessage({ action: 'ping' }).catch(() => {});
+}, 20000);
+
+// ---------------------------------------------------------------------------
 // Listen for requests from background.js
+// ---------------------------------------------------------------------------
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'get_notes') {
-    // Scroll first to force-load all lazy notes, then scrape
+    // Scroll is already done proactively — just scrape what's in the DOM.
+    // If the user has scrolled further since load, a quick re-scroll picks
+    // up any new notes that loaded since the initial pass.
     scrollToLoadAllNotes().then(() => {
       const notes = scrapeKeepNotes();
       sendResponse({ notes });
