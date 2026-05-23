@@ -78,10 +78,10 @@ async function run() {
   console.log("⏳ Waiting for Edge extension to connect...");
   const timeout = new Promise((_, reject) =>
     setTimeout(() => reject(new Error(
-      "Extension did not connect within 20 seconds.\n" +
-      "   → Make sure Edge is open at keep.google.com\n" +
-      "   → Make sure the extension loaded (check edge://extensions/)"
-    )), 20000)
+      "Extension did not connect within 35 seconds.\n" +
+      "   → Make sure Chrome is open at keep.google.com\n" +
+      "   → Make sure the extension loaded (check chrome://extensions/)"
+    )), 35000)
   );
   await Promise.race([extensionReady, timeout]);
   console.log("✅ Extension connected!\n");

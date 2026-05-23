@@ -5,6 +5,10 @@
  * Runs in the extension's own context (not the page's), so it is
  * never blocked by Google Keep's Content Security Policy.
  *
+ * Uses chrome.alarms to stay alive — Chrome MV3 service workers are
+ * terminated after ~30s of inactivity. The alarm fires every 25s to
+ * keep the worker running and the WebSocket connection open.
+ *
  * Flow:
  *   server.js  →  WebSocket message (get_notes)
  *              →  background.js asks content.js via chrome.tabs.sendMessage
@@ -14,16 +18,39 @@
 
 const BRIDGE_URL = 'ws://localhost:8080';
 let socket = null;
-let reconnectTimer = null;
 
+// ---------------------------------------------------------------------------
+// Keepalive alarm — prevents Chrome from terminating the service worker
+// ---------------------------------------------------------------------------
+// Re-create alarm on install/update and on every Chrome startup
+chrome.runtime.onInstalled.addListener(() => {
+  chrome.alarms.create('keepalive', { periodInMinutes: 0.4 });
+  connect();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  chrome.alarms.create('keepalive', { periodInMinutes: 0.4 });
+  connect();
+});
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepalive') {
+    if (!socket || socket.readyState === WebSocket.CLOSED) {
+      connect();
+    }
+  }
+});
+
+// ---------------------------------------------------------------------------
+// WebSocket connection to the local MCP bridge
+// ---------------------------------------------------------------------------
 function connect() {
-  if (socket && socket.readyState === WebSocket.OPEN) return;
+  if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) return;
 
   socket = new WebSocket(BRIDGE_URL);
 
   socket.onopen = () => {
     console.log('[Keep→Claude] Connected to bridge server.');
-    clearTimeout(reconnectTimer);
   };
 
   socket.onmessage = async (event) => {
@@ -59,12 +86,17 @@ function connect() {
   };
 
   socket.onclose = () => {
-    console.log('[Keep→Claude] Disconnected. Retrying in 5s…');
-    reconnectTimer = setTimeout(connect, 5000);
+    console.log('[Keep→Claude] Disconnected. Retrying in 5 s…');
+    socket = null;
+    setTimeout(() => {
+      if (!socket || socket.readyState === WebSocket.CLOSED) {
+        connect();
+      }
+    }, 5000);
   };
 
   socket.onerror = () => {
-    socket.close(); // onclose handles reconnect
+    socket.close(); // triggers onclose → retry
   };
 }
 

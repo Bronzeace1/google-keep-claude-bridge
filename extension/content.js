@@ -57,11 +57,21 @@ function scrapeKeepNotes() {
   return notes;
 }
 
+// Wake up the background service worker as soon as Keep loads.
+// In Chrome MV3, service workers sleep when idle — sending any message
+// forces Chrome to start the worker so it can connect to the bridge server.
+chrome.runtime.sendMessage({ action: 'ping' }).catch(() => {
+  // Ignore — background may not be ready on very first load
+});
+
 // Listen for requests from background.js
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message.action === 'get_notes') {
     const notes = scrapeKeepNotes();
     sendResponse({ notes });
   }
-  return true; // required to keep channel open for async response
+  if (message.action === 'ping') {
+    sendResponse({ alive: true });
+  }
+  return true;
 });
