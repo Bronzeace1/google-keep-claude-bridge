@@ -20,8 +20,28 @@ Write-Host "  ============================================" -ForegroundColor Dar
 # Step 1 — Check Node.js
 # ------------------------------------------------------------
 Write-Step "Checking for Node.js..."
-$nodePath = Get-Command node -ErrorAction SilentlyContinue
-if (-not $nodePath) {
+
+# Check PATH first, then fall back to common install locations
+$nodeExe = $null
+$nodeOnPath = Get-Command node -ErrorAction SilentlyContinue
+if ($nodeOnPath) {
+    $nodeExe = "node"
+} else {
+    $commonPaths = @(
+        "C:\Program Files\nodejs\node.exe",
+        "C:\Program Files (x86)\nodejs\node.exe",
+        "$env:APPDATA\nvm\current\node.exe",
+        "$env:LOCALAPPDATA\Programs\nodejs\node.exe"
+    )
+    $found = $commonPaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if ($found) {
+        $nodeExe = $found
+        # Also add npm path for the install step
+        $npmExe = Join-Path (Split-Path $found) "npm.cmd"
+    }
+}
+
+if (-not $nodeExe) {
     Write-Fail "Node.js is not installed."
     Write-Host ""
     Write-Host "     Please install Node.js first:" -ForegroundColor Yellow
@@ -32,7 +52,8 @@ if (-not $nodePath) {
     Read-Host "`n  Press Enter to exit"
     exit 1
 }
-$nodeVersion = & node --version
+
+$nodeVersion = & $nodeExe --version
 Write-OK "Node.js $nodeVersion found."
 
 # ------------------------------------------------------------
@@ -40,9 +61,19 @@ Write-OK "Node.js $nodeVersion found."
 # ------------------------------------------------------------
 Write-Step "Installing server dependencies..."
 $serverDir = Join-Path $ROOT "mcp-server"
+
+# Resolve npm path alongside node
+if (-not $npmExe) {
+    $npmExe = Get-Command npm -ErrorAction SilentlyContinue
+    if ($npmExe) { $npmExe = "npm" }
+    else {
+        $npmExe = Join-Path (Split-Path $nodeExe) "npm.cmd"
+    }
+}
+
 Push-Location $serverDir
 try {
-    & npm install --silent 2>&1 | Out-Null
+    & $npmExe install --silent 2>&1 | Out-Null
     Write-OK "Dependencies installed."
 } catch {
     Write-Fail "npm install failed: $_"
@@ -84,7 +115,7 @@ if (-not $config.PSObject.Properties["mcpServers"]) {
 
 # Add or update our entry
 $entry = [PSCustomObject]@{
-    command = "node"
+    command = $nodeExe
     args    = @($serverScript)
 }
 if ($config.mcpServers.PSObject.Properties["google-keep-bridge"]) {
@@ -113,7 +144,7 @@ title Google Keep ^> Claude Bridge Server
 echo  Bridge server starting...
 echo  Keep this window open while using Claude.
 echo.
-node "$serverScript"
+"$nodeExe" "$serverScript"
 pause
 "@ | Set-Content $startScript -Encoding utf8
 
@@ -127,30 +158,13 @@ $shortcut.Save()
 Write-OK "Shortcut created on your Desktop: 'Start Keep Bridge'"
 
 # ------------------------------------------------------------
-# Step 5 — Chrome extension setup
+# Step 5 — Browser extension setup (Chrome and/or Edge)
 # ------------------------------------------------------------
-Write-Step "Opening Chrome extension installer..."
+Write-Step "Detecting browsers and opening extension installer..."
 
 $extensionDir = Join-Path $ROOT "extension"
 
-Write-Host ""
-Write-Host "  ----------------------------------------------------------------" -ForegroundColor DarkGray
-Write-Host "   LAST STEP: Load the Chrome Extension (takes ~30 seconds)" -ForegroundColor White
-Write-Host "  ----------------------------------------------------------------" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "   Chrome will open to the Extensions page." -ForegroundColor White
-Write-Host "   Follow these 3 steps:" -ForegroundColor White
-Write-Host ""
-Write-Host "   1. Toggle ON 'Developer mode' (top-right corner)" -ForegroundColor Yellow
-Write-Host "   2. Click 'Load unpacked' (top-left)" -ForegroundColor Yellow
-Write-Host "   3. Select this folder and click OK:" -ForegroundColor Yellow
-Write-Host "      $extensionDir" -ForegroundColor Cyan
-Write-Host ""
-
-# Open File Explorer to the extension folder so they can copy-paste the path
-Start-Process "explorer.exe" $extensionDir
-
-# Open Chrome to the extensions page
+# Locate Chrome
 $chromePaths = @(
     "$env:PROGRAMFILES\Google\Chrome\Application\chrome.exe",
     "$env:LOCALAPPDATA\Google\Chrome\Application\chrome.exe",
@@ -158,11 +172,62 @@ $chromePaths = @(
 )
 $chrome = $chromePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
 
+# Locate Edge (pre-installed on Windows 10/11)
+$edgePaths = @(
+    "${env:PROGRAMFILES(X86)}\Microsoft\Edge\Application\msedge.exe",
+    "$env:PROGRAMFILES\Microsoft\Edge\Application\msedge.exe",
+    "$env:LOCALAPPDATA\Microsoft\Edge\Application\msedge.exe"
+)
+$edge = $edgePaths | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+# Also try registry for both browsers
+if (-not $chrome) {
+    $chrome = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\chrome.exe" -ErrorAction SilentlyContinue).'(Default)'
+}
+if (-not $edge) {
+    $edge = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\msedge.exe" -ErrorAction SilentlyContinue).'(Default)'
+}
+
+Write-Host ""
+Write-Host "  ----------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host "   LAST STEP: Load the Extension into your browser(s)" -ForegroundColor White
+Write-Host "  ----------------------------------------------------------------" -ForegroundColor DarkGray
+Write-Host ""
+Write-Host "   For EACH browser window that opens:" -ForegroundColor White
+Write-Host ""
+Write-Host "   1. Toggle ON 'Developer mode' (top-right corner)" -ForegroundColor Yellow
+Write-Host "   2. Click 'Load unpacked' (top-left)" -ForegroundColor Yellow
+Write-Host "   3. Select this folder and click OK:" -ForegroundColor Yellow
+Write-Host "      $extensionDir" -ForegroundColor Cyan
+Write-Host ""
+
+# Open File Explorer to the extension folder
+Start-Process "explorer.exe" $extensionDir
+
+$browsersFound = 0
+
 if ($chrome) {
     Start-Process $chrome "chrome://extensions/"
     Write-OK "Opened Chrome extensions page."
+    $browsersFound++
 } else {
-    Write-Warn "Chrome not found automatically. Please open Chrome and go to: chrome://extensions/"
+    Write-Warn "Chrome not found. Download it at https://google.com/chrome if you want it."
+}
+
+if ($edge) {
+    Start-Sleep -Milliseconds 800   # slight delay so windows don't overlap
+    Start-Process $edge "edge://extensions/"
+    Write-OK "Opened Edge extensions page."
+    $browsersFound++
+} else {
+    Write-Warn "Edge not found. It comes pre-installed on Windows 10/11."
+}
+
+if ($browsersFound -eq 0) {
+    Write-Warn "No browser found automatically."
+    Write-Host "     Please open Chrome or Edge and navigate to:" -ForegroundColor Yellow
+    Write-Host "       Chrome: chrome://extensions/" -ForegroundColor Yellow
+    Write-Host "       Edge:   edge://extensions/" -ForegroundColor Yellow
 }
 
 # ------------------------------------------------------------
