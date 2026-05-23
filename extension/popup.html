@@ -59,23 +59,6 @@
     3. Ask Claude: <em>"What notes do I have?"</em>
   </div>
 
-  <script>
-    const dot    = document.getElementById('dot');
-    const status = document.getElementById('status');
-
-    // Try a quick WebSocket probe to check if the bridge is running
-    const probe = new WebSocket('ws://localhost:8080');
-
-    probe.onopen = () => {
-      dot.className    = 'dot connected';
-      status.textContent = 'Bridge is running ✓';
-      probe.close();
-    };
-
-    probe.onerror = () => {
-      dot.className    = 'dot disconnected';
-      status.textContent = 'Bridge not running. Start server.js first.';
-    };
-  </script>
+  <script src="popup.js"></script>
 </body>
 </html>

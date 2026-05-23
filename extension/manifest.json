@@ -4,12 +4,14 @@
   "version": "1.0.0",
   "description": "Bridges your Google Keep notes to Claude Desktop via a local MCP server.",
   "permissions": [
-    "activeTab",
-    "storage"
+    "tabs"
   ],
   "host_permissions": [
     "https://keep.google.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
       "matches": ["https://keep.google.com/*"],
