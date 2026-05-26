@@ -37,7 +37,7 @@ WHAT IT INSTALLS
 REQUIREMENTS
 • Chrome (or any Chromium-based browser)
 • Node.js installed on your computer
-• Claude Desktop app (free from claude.ai)
+• Claude Desktop, Claude Code, or Claude Cowork (free from claude.ai)
 • Google Keep open in a Chrome tab
 
 SETUP TAKES ABOUT 2 MINUTES
@@ -58,8 +58,7 @@ SUPPORT EMAIL:
   bronzeacestudio@gmail.com
 
 PRIVACY POLICY URL:
-  https://github.com/Bronzeace1/google-keep-claude-bridge#privacy-policy
-  (or host the privacy-policy.html from this folder)
+  https://bronzeace1.github.io/google-keep-claude-bridge/privacy-policy.html
 
 ============================================================
 SUBMISSION CHECKLIST
