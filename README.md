@@ -2,6 +2,17 @@
 
 Connects your Google Keep notes to Claude Desktop — **no API keys, no OAuth, no passwords**. Works because the Chrome extension reads Keep directly from your browser where you're already logged in.
 
+## Compatibility
+
+| Client | Works? |
+|--------|--------|
+| Claude Code (CLI / desktop app) | ✅ Yes |
+| Claude Cowork | ✅ Yes |
+| Claude Desktop | ✅ Yes |
+| Claude.ai Chat (web) | ❌ No |
+
+> **Why not Claude.ai chat?** Claude.ai runs in Anthropic's cloud and cannot reach services on your local machine. This bridge runs on `localhost`, so only local Claude clients (Claude Code, Cowork, and Desktop) can connect to it.
+
 ## How it works
 
 ```
