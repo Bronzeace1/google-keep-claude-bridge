@@ -23,8 +23,8 @@ HOW IT WORKS
 EXAMPLE QUESTIONS YOU CAN ASK CLAUDE
 • "What restaurants do I have saved in Keep?"
 • "Summarise my project notes"
-• "Do I have anything about my fence project?"
-• "What's on my CCTV business plan?"
+• "Do I have anything on my reading list?"
+• "What's on my home improvement list?"
 
 PRIVACY — YOUR DATA NEVER LEAVES YOUR COMPUTER
 The extension reads your visible Keep notes from the browser tab (the same notes you can see on screen) and sends them only to a local server running on your own machine (localhost:8080). Nothing is sent to any external server. No account is created. No data is stored.
@@ -55,7 +55,7 @@ WEBSITE / HOMEPAGE:
   https://github.com/Bronzeace1/google-keep-claude-bridge
 
 SUPPORT EMAIL:
-  jesse.temares@gmail.com
+  [your-contact@email.com]
 
 PRIVACY POLICY URL:
   https://github.com/Bronzeace1/google-keep-claude-bridge#privacy-policy
@@ -70,7 +70,7 @@ SUBMISSION CHECKLIST
 [ ] Description:    (above — copy/paste into store form)
 [ ] Privacy policy: store-assets/privacy-policy.html
 [ ] Developer fee:  $5 one-time (pay at chrome.google.com/webstore/devconsole)
-[ ] Developer acct: sign in with jesse.temares@gmail.com
+[ ] Developer acct: sign in with [your Google account]
 
 SUBMISSION URL:
   https://chrome.google.com/webstore/devconsole
