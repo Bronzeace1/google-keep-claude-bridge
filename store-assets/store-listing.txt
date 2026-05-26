@@ -55,7 +55,7 @@ WEBSITE / HOMEPAGE:
   https://github.com/Bronzeace1/google-keep-claude-bridge
 
 SUPPORT EMAIL:
-  [your-contact@email.com]
+  bronzeacestudio@gmail.com
 
 PRIVACY POLICY URL:
   https://github.com/Bronzeace1/google-keep-claude-bridge#privacy-policy
