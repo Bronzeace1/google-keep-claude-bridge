@@ -10,11 +10,11 @@ ws.on("message", d => { const m = JSON.parse(d.toString()); if (m.id && pending.
 function evaluate(expr) { return new Promise(res => { const id = msgId++; pending.set(id, res); ws.send(JSON.stringify({ id, method: "Runtime.evaluate", params: { expression: expr, returnByValue: true } })); }); }
 
 ws.on("open", async () => {
-  // Inspect the second card (first real note = "Places to eat")
+  // Inspect the first note card
   const r = await evaluate(`
     (function() {
       const cards = document.querySelectorAll('.IZ65Hb-n0tgWb.IZ65Hb-WsjYwc-nUpftc');
-      const card = cards[0]; // "Places to eat"
+      const card = cards[0]; // first note card
       const allEls = Array.from(card.querySelectorAll('*'));
       return JSON.stringify(allEls.map(el => ({
         tag: el.tagName,
