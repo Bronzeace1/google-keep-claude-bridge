@@ -3,3 +3,6 @@ node_modules/
 .env
 test-out.txt
 test-err.txt
+mcp-server/bundle.cjs
+installer/keep-bridge.exe
+installer/KeepClaudeInstaller.zip

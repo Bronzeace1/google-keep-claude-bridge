@@ -156,5 +156,12 @@ mcpServer.setRequestHandler(CallToolRequestSchema, async (request) => {
   throw new Error(`Unknown tool: ${name}`);
 });
 
-const transport = new StdioServerTransport();
-await mcpServer.connect(transport);
+async function main() {
+  const transport = new StdioServerTransport();
+  await mcpServer.connect(transport);
+}
+
+main().catch((err) => {
+  console.error("[bridge] Fatal error:", err.message);
+  process.exit(1);
+});
