@@ -5,10 +5,18 @@
   "type": "module",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "build": "pkg server.js --target node18-win-x64 --output ../installer/keep-bridge.exe"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.1",
     "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [],
+    "targets": ["node18-win-x64"]
   }
 }

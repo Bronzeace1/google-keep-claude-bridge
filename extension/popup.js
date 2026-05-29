@@ -1,19 +1,28 @@
 // popup.js — loaded by popup.html (inline scripts are forbidden in MV3)
-const dot    = document.getElementById('dot');
-const status = document.getElementById('status');
+const dot          = document.getElementById('dot');
+const statusEl     = document.getElementById('status');
+const downloadBtn  = document.getElementById('downloadBtn');
+const instructions = document.getElementById('instructions');
 
-// Quick WebSocket probe to check if the bridge server is running.
-// Extension popup pages are NOT subject to the host page's CSP,
-// so this localhost connection is allowed here.
 const probe = new WebSocket('ws://localhost:8080');
 
 probe.onopen = () => {
-  dot.className      = 'dot connected';
-  status.textContent = 'Bridge is running ✓';
+  dot.className        = 'dot connected';
+  statusEl.textContent = 'Bridge is running ✓';
+  downloadBtn.style.display = 'none';
+  instructions.innerHTML =
+    '<strong>Ready!</strong> Open ' +
+    '<a href="https://keep.google.com" target="_blank">keep.google.com</a> ' +
+    'in Chrome, then ask Claude:<br><br>' +
+    '<em>"What notes do I have in Keep?"</em>';
   probe.close();
 };
 
 probe.onerror = () => {
-  dot.className      = 'dot disconnected';
-  status.textContent = 'Bridge not running. Start server.js first.';
+  dot.className        = 'dot disconnected';
+  statusEl.textContent = 'Bridge not installed yet.';
+  downloadBtn.style.display = 'block';
+  instructions.innerHTML =
+    'Click the button above to download the one-time installer. ' +
+    'It sets everything up automatically — no technical steps needed.';
 };
