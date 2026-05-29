@@ -5,4 +5,7 @@ test-out.txt
 test-err.txt
 mcp-server/bundle.cjs
 installer/keep-bridge.exe
+installer/node.exe
+installer/bundle.cjs
 installer/KeepClaudeInstaller.zip
+installer/test-size.zip
